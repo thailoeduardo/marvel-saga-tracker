@@ -1,86 +1,131 @@
-# Welcome to your Lovable project
+# Marvel Saga Tracker
 
-## Project info
+Organize suas sagas, títulos e issues da Marvel em um PWA simples, rápido e sincronizado com Supabase.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+O projeto nasceu para resolver um problema bem específico: acompanhar leituras longas de quadrinhos, eventos, tie-ins, prelúdios, epílogos e edições anuais sem se perder no meio do caminho.
 
-## How can I edit this code?
+## Recursos
 
-There are several ways of editing your application.
+- Cadastro de sagas com era, universo, ano e notas.
+- Cadastro de títulos reutilizáveis para issues.
+- Cadastro de issues com número, volume, edição anual, ano, tipo de história, ordem de leitura e notas.
+- Agrupamento por tipo de história: principal, tie-in, prelúdio, epílogo e graphic novel.
+- Controle de progresso de leitura por saga.
+- Estatísticas gerais.
+- Importação e exportação de dados em JSON.
+- Importação e exportação de issues por saga.
+- Login com email e senha via Supabase Auth.
+- Dados isolados por usuário com Row Level Security.
+- PWA com suporte a instalação.
+- Tema claro, escuro e sistema.
 
-**Use Lovable**
+## Stack
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+- React
+- TypeScript
+- Vite
+- Tailwind CSS
+- shadcn-ui
+- Supabase
+- React Router
+- TanStack Query
 
-Changes made via Lovable will be committed automatically to this repo.
+## Começando
 
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+Clone o projeto:
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+git clone git@github.com:thailoeduardo/marvel-saga-tracker.git
+cd marvel-saga-tracker
+```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+Instale as dependências:
 
-# Step 3: Install the necessary dependencies.
-npm i
+```sh
+npm install
+```
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+Crie o arquivo `.env`:
+
+```env
+VITE_SUPABASE_URL=...
+VITE_SUPABASE_PUBLISHABLE_KEY=...
+```
+
+Rode o projeto:
+
+```sh
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Configurando o Supabase
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+1. Crie um projeto no Supabase.
+2. Copie `Project URL` para `VITE_SUPABASE_URL`.
+3. Copie a chave publishable/anon para `VITE_SUPABASE_PUBLISHABLE_KEY`.
+4. No SQL Editor do Supabase, execute o conteúdo de:
 
-**Use GitHub Codespaces**
+```txt
+supabase/schema.sql
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+5. Em Authentication, habilite login por email/senha.
 
-## What technologies are used for this project?
+As tabelas principais são:
 
-This project is built with:
+- `titles`
+- `sagas`
+- `issues`
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+Todas usam `user_id` com RLS para garantir que cada usuário veja apenas os próprios dados.
 
-## How can I deploy this project?
+## Scripts
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+```sh
+npm run dev
+npm run build
+npm run lint
+npm run preview
+```
 
-## Can I connect a custom domain to my Lovable project?
+## Importação e Backup
 
-Yes, you can!
+O app permite exportar um backup completo em JSON e importar esse backup novamente.
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+Com Supabase configurado, a importação salva os dados no banco do usuário logado. Sem Supabase, o app usa o armazenamento local do navegador como fallback.
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+## Segurança
 
----
+Não coloque chaves privadas no frontend.
 
-## Títulos (nova funcionalidade) ✅
+Variáveis esperadas no `.env`:
 
-Adicionamos um sistema de gerenciamento de **Títulos** (personagens, equipes, sagas/eventos) para facilitar o cadastro de Issues:
+```env
+VITE_SUPABASE_URL=...
+VITE_SUPABASE_PUBLISHABLE_KEY=...
+```
 
-- Nova página **Títulos** em `Menu > Títulos` para listar, adicionar, editar e excluir títulos.
-- Ao criar/editar uma Issue (em uma Saga), o campo **Título** agora é um `Select` que lista os títulos cadastrados e possui a opção **Adicionar novo título** para criação rápida sem sair da tela.
-- Cada Issue pode referenciar um `titleId` (armazenamento local) e mantém o nome do título em `series` para compatibilidade.
-- Exportação e importação de títulos (JSON) com opção de mesclar duplicidades.
+Nunca use `service_role_key` no app React.
 
-Esta funcionalidade foi implementada totalmente no cliente (localStorage) e funciona offline (PWA).
+## Contribuindo
+
+Contribuições são bem-vindas.
+
+Fluxo sugerido:
+
+```sh
+git checkout -b minha-feature
+npm install
+npm run dev
+```
+
+Antes de abrir um pull request:
+
+```sh
+npm run build
+npx tsc --noEmit
+```
+
+## Licença
+
+Este projeto é open source. Defina uma licença no arquivo `LICENSE` antes de publicar oficialmente.
