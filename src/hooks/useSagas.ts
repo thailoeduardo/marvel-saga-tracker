@@ -1,11 +1,18 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Saga, Issue, Era, Universe, SortOption, FilterOption } from '@/types/marvel';
 import * as storage from '@/lib/storage';
 import * as supabaseStorage from '@/lib/supabaseStorage';
 
+function createInstanceId() {
+  return typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 export function useSagas() {
   const [sagas, setSagas] = useState<Saga[]>([]);
   const [loading, setLoading] = useState(true);
+  const instanceIdRef = useRef(createInstanceId());
 
   const refresh = useCallback(async () => {
     if (supabaseStorage.canUseSupabase()) {
@@ -20,11 +27,21 @@ export function useSagas() {
     setSagas(storage.getSagas());
   }, []);
 
+  const notifySagasUpdated = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('sagas-updated', {
+      detail: { sourceId: instanceIdRef.current },
+    }));
+  }, []);
+
   useEffect(() => {
     refresh().finally(() => setLoading(false));
 
-    // Listen for storage changes from other components
-    const handleStorageChange = () => refresh();
+    // Listen for storage changes from other hook instances.
+    const handleStorageChange = (event: Event) => {
+      const sourceId = event instanceof CustomEvent ? event.detail?.sourceId : undefined;
+      if (sourceId === instanceIdRef.current) return;
+      refresh();
+    };
     window.addEventListener('sagas-updated', handleStorageChange);
     return () => window.removeEventListener('sagas-updated', handleStorageChange);
   }, [refresh]);
@@ -33,97 +50,114 @@ export function useSagas() {
     if (supabaseStorage.canUseSupabase()) {
       const newSaga = await supabaseStorage.addSaga(data);
       await refresh();
-      window.dispatchEvent(new Event('sagas-updated'));
+      notifySagasUpdated();
       return newSaga;
     }
 
     const newSaga = storage.addSaga(data);
     refresh();
-    window.dispatchEvent(new Event('sagas-updated'));
+    notifySagasUpdated();
     return newSaga;
-  }, [refresh]);
+  }, [notifySagasUpdated, refresh]);
 
   const updateSaga = useCallback(async (id: string, updates: Partial<Omit<Saga, 'id' | 'createdAt'>>) => {
     if (supabaseStorage.canUseSupabase()) {
       const updated = await supabaseStorage.updateSaga(id, updates);
       await refresh();
-      window.dispatchEvent(new Event('sagas-updated'));
+      notifySagasUpdated();
       return updated;
     }
 
     const updated = storage.updateSaga(id, updates);
     refresh();
-    window.dispatchEvent(new Event('sagas-updated'));
+    notifySagasUpdated();
     return updated;
-  }, [refresh]);
+  }, [notifySagasUpdated, refresh]);
 
   const deleteSaga = useCallback(async (id: string) => {
     if (supabaseStorage.canUseSupabase()) {
       const result = await supabaseStorage.deleteSaga(id);
       await refresh();
-      window.dispatchEvent(new Event('sagas-updated'));
+      notifySagasUpdated();
       return result;
     }
 
     const result = storage.deleteSaga(id);
     refresh();
-    window.dispatchEvent(new Event('sagas-updated'));
+    notifySagasUpdated();
     return result;
-  }, [refresh]);
+  }, [notifySagasUpdated, refresh]);
 
   const addIssue = useCallback(async (sagaId: string, issue: Omit<Issue, 'id' | 'createdAt'>) => {
     if (supabaseStorage.canUseSupabase()) {
       const newIssue = await supabaseStorage.addIssue(sagaId, issue);
       await refresh();
-      window.dispatchEvent(new Event('sagas-updated'));
+      notifySagasUpdated();
       return newIssue;
     }
 
     const newIssue = storage.addIssue(sagaId, issue);
     refresh();
-    window.dispatchEvent(new Event('sagas-updated'));
+    notifySagasUpdated();
     return newIssue;
-  }, [refresh]);
+  }, [notifySagasUpdated, refresh]);
 
   const updateIssue = useCallback(async (sagaId: string, issueId: string, updates: Partial<Omit<Issue, 'id' | 'createdAt'>>) => {
     if (supabaseStorage.canUseSupabase()) {
       const updated = await supabaseStorage.updateIssue(sagaId, issueId, updates);
       await refresh();
-      window.dispatchEvent(new Event('sagas-updated'));
+      notifySagasUpdated();
       return updated;
     }
 
     const updated = storage.updateIssue(sagaId, issueId, updates);
     refresh();
-    window.dispatchEvent(new Event('sagas-updated'));
+    notifySagasUpdated();
     return updated;
-  }, [refresh]);
+  }, [notifySagasUpdated, refresh]);
 
   const deleteIssue = useCallback(async (sagaId: string, issueId: string) => {
     if (supabaseStorage.canUseSupabase()) {
       const result = await supabaseStorage.deleteIssue(sagaId, issueId);
       await refresh();
-      window.dispatchEvent(new Event('sagas-updated'));
+      notifySagasUpdated();
       return result;
     }
 
     const result = storage.deleteIssue(sagaId, issueId);
     refresh();
-    window.dispatchEvent(new Event('sagas-updated'));
+    notifySagasUpdated();
     return result;
-  }, [refresh]);
+  }, [notifySagasUpdated, refresh]);
 
-  const toggleIssueRead = useCallback(async (sagaId: string, issueId: string) => {
+  const toggleIssueRead = useCallback(async (sagaId: string, issueId: string, nextIsRead?: boolean) => {
     if (supabaseStorage.canUseSupabase()) {
-      const result = await supabaseStorage.toggleIssueRead(sagaId, issueId);
-      await refresh();
-      window.dispatchEvent(new Event('sagas-updated'));
-      return result;
+      const updated = nextIsRead === undefined
+        ? await supabaseStorage.toggleIssueRead(sagaId, issueId)
+        : await supabaseStorage.updateIssue(sagaId, issueId, { isRead: nextIsRead });
+      if (typeof updated === 'boolean') {
+        await refresh();
+        return updated;
+      }
+      if (updated) {
+        setSagas(currentSagas => currentSagas.map(saga => (
+          saga.id === sagaId
+            ? {
+                ...saga,
+                issues: saga.issues.map(issue => (issue.id === issueId ? updated : issue)),
+                updatedAt: Date.now(),
+              }
+            : saga
+        )));
+        return true;
+      }
+      return false;
     }
 
-    const result = storage.toggleIssueRead(sagaId, issueId);
+    const result = nextIsRead === undefined
+      ? storage.toggleIssueRead(sagaId, issueId)
+      : Boolean(storage.updateIssue(sagaId, issueId, { isRead: nextIsRead }));
     refresh();
-    window.dispatchEvent(new Event('sagas-updated'));
     return result;
   }, [refresh]);
 
@@ -131,15 +165,15 @@ export function useSagas() {
     if (supabaseStorage.canUseSupabase()) {
       const result = await supabaseStorage.resetSagaProgress(sagaId);
       await refresh();
-      window.dispatchEvent(new Event('sagas-updated'));
+      notifySagasUpdated();
       return result;
     }
 
     const result = storage.resetSagaProgress(sagaId);
     refresh();
-    window.dispatchEvent(new Event('sagas-updated'));
+    notifySagasUpdated();
     return result;
-  }, [refresh]);
+  }, [notifySagasUpdated, refresh]);
 
   const getSaga = useCallback((id: string) => {
     return sagas.find(s => s.id === id) || null;

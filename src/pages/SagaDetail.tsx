@@ -880,7 +880,7 @@ export default function SagaDetail() {
                           <IssueItem
                             key={issue.id}
                             issue={issue}
-                            onToggle={() => toggleIssueRead(saga.id, issue.id)}
+                            onToggle={() => toggleIssueRead(saga.id, issue.id, !issue.isRead)}
                             onEdit={() => handleOpenEditIssue(issue.id)}
                             onDuplicate={() => handleDuplicateIssue(issue.id)}
                             onDelete={() => setDeletingIssueId(issue.id)}
